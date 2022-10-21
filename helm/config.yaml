@@ -1,0 +1,73 @@
+# This file can update the JupyterHub Helm chart's default configuration values.
+#
+# For reference see the configuration reference and default values, but make
+# sure to refer to the Helm chart version of interest to you!
+#
+# Introduction to YAML:     https://www.youtube.com/watch?v=cdLNKUoMc6c
+# Chart config reference:   https://zero-to-jupyterhub.readthedocs.io/en/stable/resources/reference.html
+# Chart default values:     https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/HEAD/jupyterhub/values.yaml
+# Available chart versions: https://jupyterhub.github.io/helm-chart/
+hub:
+  service:
+    type: ClusterIP
+    annotations: {}
+    ports:
+      nodePort:
+    extraPorts: []
+    loadBalancerIP:
+  baseUrl: /
+  config:
+    AzureAdOAuthenticator:
+      client_id: 1a0910db-ecc9-4a00-b42a-8a8554736c4d
+      #below is the client secret value not the secret ID
+      client_secret: aXO8Q~tj2uBDoC6SQJm7Lp8MC-ojseRPBdjIfbHh
+      oauth_callback_url: https://jupyterhub-dev.mareana.com/hub/oauth_callback
+      tenant_id: d19e3014-dc30-4e35-ac09-4a8b08d2e688
+    Authenticator:
+      admin_users:
+        - sayed.bakash@mareana.com
+        - nagaraju@mareana.com
+        - krishnatheja.vanka@mareana.com
+        - dinesh.jinjala@mareana.com
+        - ramaa.rao@mareana.com
+      auto_login: true
+    JupyterHub:
+      authenticator_class: azuread
+  db:
+    type: sqlite-pvc
+    upgrade:
+    pvc:
+      annotations: {}
+      selector: {}
+      accessModes:
+        - ReadWriteOnce
+      storage: 1Gi
+      subPath:
+      storageClassName: gp3
+proxy:
+  service:
+    type: NodePort
+singleuser:
+  image:
+    # You should replace the "latest" tag with a fixed version from:
+    # https://hub.docker.com/r/jupyter/datascience-notebook/tags/
+    # Inspect the Dockerfile at:
+    # https://github.com/jupyter/docker-stacks/tree/HEAD/datascience-notebook/Dockerfile
+    name: registry.cloud.mareana.com/mdh-cpv/dev/jupyterhub
+    tag: latest
+    pullPolicy: Always
+    pullSecrets: 
+        - regcred
+  lifecycleHooks:
+    postStart:
+      exec:
+        command:
+          - "sh"
+          - "-c"
+          - >
+             cp -r /app/ /home/jovyan/
+  storage:
+    dynamic:
+      storageClass: gp3
+  nodeSelector: 
+    Name: "jupyterhub"

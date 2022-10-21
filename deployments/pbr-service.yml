@@ -1,0 +1,194 @@
+#encrypt the username and passwd
+#echo -n 'postgres' | base64
+#echo -n 'postgrespass' | base64
+#
+--- 
+apiVersion: v1
+data: 
+  password: cG9zdGdyZXNwYXNz 
+  username: cG9zdGdyZXM= 
+  s3-secret-key: QUtJQTRKQVZCQjdJTU01U1NBVjI=
+  s3-access-key: dnRaTkVkblljQzgzeGtaV09FUzFpQVZ1V1ZydVEwNkdMTG10MkZMcQ==
+  aws-access-key: QUtJQTRKQVZCQjdJR1dPUkVTNEw=
+  aws-secret-key: bzJ0NDExci93TS9GdDh5dEtHVHBlUTRPajFvRDM5RWZiTEZyeEowKw==
+
+kind: Secret
+metadata: 
+  name: mdh-pbr-services-v3-5-db-creds
+  namespace: mi-v3-5
+type: Opaque
+
+#pv-pvc:
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mdh-pbr-services-v3-5
+  namespace: mi-v3-5
+  labels: #Labels 
+    app: mdh-pbr-services-v3-5
+    ver: pv 
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: 192.168.136.214
+    path: "/mnt/nfs_share/mi-v3-5/mdh-pbr-services-v3-5"
+
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mdh-pbr-services-v3-5-pvc
+  namespace: mi-v3-5
+spec:
+  selector:
+    matchLabels:  #Select a volume with this labels
+      app: mdh-pbr-services-v3-5
+      ver: pv
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mdh-pbr-services-v3-5
+  namespace: mi-v3-5
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: mdh-pbr-services-v3-5
+  strategy:
+      type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: mdh-pbr-services-v3-5
+    spec:
+      nodeSelector:
+         Name: "mi-v3-5"
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+        - name: logs
+          persistentVolumeClaim:
+             claimName: mdh-pbr-services-v3-5-pvc
+      hostAliases:
+        - ip: "192.168.135.212"
+          hostnames:
+          - "postgres"
+      containers:
+        - image: IMAGE
+          name: mdh-pbr-services-v3-5
+          imagePullPolicy: Always
+          command: 
+          - gunicorn
+          - --reload 
+          - --bind=0.0.0.0:9090
+          - --workers=4 
+          - --timeout=3600 
+          - app:app
+          ports:
+          - name: service-port
+            containerPort: 9090
+          env:
+            - name: "APPLICATION_HOST"
+              value: "https://mi-qav3-5.mareana.com"
+            - name: "API_PG_HOST"
+              value: "postgres"
+            - name: "API_PG_PORT"
+              value: "5432"
+            - name: "API_PG_DB"
+              value: "mdh3-5"
+            - name: "POSTGRES_USER"
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: mdh-pbr-services-v3-5-db-creds
+            - name: "POSTGRES_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: mdh-pbr-services-v3-5-db-creds
+            - name: "LOGS"
+              value: "/var/log/mdh-pbr-service/"
+            - name: "INPUT_FILES_STORAGE"
+              value: "/app/temp/"
+            - name: "S3_REGION"
+              value: "us-east-2"
+            - name: "S3_KEY_ID"
+              valueFrom:
+                secretKeyRef:
+                  key: s3-secret-key
+                  name: mdh-pbr-services-v3-5-db-creds
+            - name: "S3_ACCESS_KEY"
+              valueFrom:
+                secretKeyRef:
+                  key: s3-access-key
+                  name: mdh-pbr-services-v3-5-db-creds
+            - name: "S3_BUCKET_NAME"
+              value: "mdhbucket"
+            - name: "S3_OBJECT_PATH_DEV"
+              value: "mi-dev-service-filesharing-store"
+            - name: "AWS_ACCESS_KEY_ID"
+              valueFrom:
+                secretKeyRef:
+                  key: aws-access-key
+                  name: mdh-pbr-services-v3-5-db-creds
+            - name: "AWS_SECRET_ACCESS_KEY"
+              valueFrom:
+                secretKeyRef:
+                  key: aws-secret-key
+                  name: mdh-pbr-services-v3-5-db-creds
+            
+          volumeMounts:
+            - name: logs
+              mountPath: /var/log/mdh-pbr-service/
+          resources:
+            requests:
+              memory: 1Gi
+---
+apiVersion: v1     #service is enabled which is available in cluster , not outside .  Because to discover by the depeendency pods 
+kind: Service
+metadata:
+  name: mdh-pbr-services-v3-5
+  namespace: mi-v3-5
+spec:
+  ports:
+  - port: 9090
+    targetPort: service-port
+    protocol: TCP
+  selector:
+    app: mdh-pbr-services-v3-5
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2beta1     # kubectl api-versions  (to check the versions of api w
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mdh-pbr-services-v3-5-autoscaler
+  namespace: mi-v3-5
+spec:
+  scaleTargetRef:
+          #apiVersion: extensions/v1beta1
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mdh-pbr-services-v3-5
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: memory
+      targetAverageUtilization: 90
+
