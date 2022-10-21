@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpv-nextgen-ui-v3-5 
+  namespace: mi-v3-5
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: cpv-nextgen-ui-v3-5
+  strategy:
+      type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: cpv-nextgen-ui-v3-5
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      nodeSelector:
+         Name: mi-v3-5
+      containers:
+        - image: registry.cloud.mareana.com/mdh-cpv-v3-5/qa/ui:1078 
+          name: cpv-nextgen-ui-v3-5
+          imagePullPolicy: Always
+          ports:
+          - name: port
+            containerPort: 80
+          resources:
+            requests:
+              memory: 0.5Gi
+              #  limits:
+                  #   cpu: 200m
+                  #  memory: 1Gi
+---
+apiVersion: v1     #service is enabled which is available in cluster , not outside .  Because to discover by the depeendency pods 
+kind: Service
+metadata:
+  name: cpv-nextgen-ui-v3-5
+  namespace: mi-v3-5
+spec:
+  ports:
+  - port: 80
+    targetPort: port
+    protocol: TCP
+  selector:
+    app: cpv-nextgen-ui-v3-5
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2beta1     # kubectl api-versions  (to check the versions of api w
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cpv-nextgen-ui-v3-5-autoscaler
+  namespace: mi-v3-5
+spec:
+  scaleTargetRef:
+          #apiVersion: extensions/v1beta1
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cpv-nextgen-ui-v3-5
+  minReplicas: 1
+  maxReplicas: 10
+  #  targetCPUUtilizationPercentage: 80
+  metrics:
+          #  - type: Resource
+          #resource:
+          # name: cpu
+          #      targetAverageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      # targetAverageValue: 200Mi  not work, changed to below
+      targetAverageUtilization: 90
+
+

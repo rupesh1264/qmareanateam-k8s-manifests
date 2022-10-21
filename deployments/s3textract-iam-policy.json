@@ -1,0 +1,149 @@
+{ 
+
+    "Version": "2012-10-17", 
+
+    "Statement": [ 
+
+        { 
+
+            "Sid": "VisualEditor0", 
+
+            "Effect": "Allow", 
+
+            "Action": "s3:*", 
+
+            "Resource": "arn:aws:s3:::mdhbucket", 
+
+            "Condition": { 
+
+                "StringLike": { 
+
+                    "s3:prefix": "mi-dev-service-filesharing-store/*" 
+
+                } 
+
+            } 
+
+        }, 
+
+        { 
+
+            "Sid": "VisualEditor1", 
+
+            "Effect": "Allow", 
+
+            "Action": "s3:*", 
+
+            "Resource": "arn:aws:s3:::mdhbucket", 
+
+            "Condition": { 
+
+                "StringLike": { 
+
+                    "s3:prefix": "mi-stage-service-filesharing-store/*" 
+
+                } 
+
+            } 
+
+        }, 
+
+        { 
+
+            "Sid": "VisualEditor2", 
+
+            "Effect": "Allow", 
+
+            "Action": [ 
+
+                "s3:ListStorageLensConfigurations", 
+
+                "s3:ListAccessPointsForObjectLambda", 
+
+                "s3:GetAccessPoint", 
+
+                "s3:PutAccountPublicAccessBlock", 
+
+                "s3:GetAccountPublicAccessBlock", 
+
+                "s3:ListAllMyBuckets", 
+
+                "s3:ListAccessPoints", 
+
+                "s3:PutAccessPointPublicAccessBlock", 
+
+                "s3:ListJobs", 
+
+                "s3:PutStorageLensConfiguration", 
+
+                "s3:ListMultiRegionAccessPoints", 
+
+                "s3:CreateJob" 
+
+            ], 
+
+            "Resource": "*" 
+
+        }, 
+
+        { 
+
+            "Sid": "VisualEditor3", 
+
+            "Effect": "Allow", 
+
+            "Action": "s3:*", 
+
+            "Resource": "arn:aws:s3:::mdhbucket/mi-dev-service-filesharing-store/*" 
+
+        }, 
+
+      { 
+
+            "Sid": "VisualEditor4", 
+
+            "Effect": "Allow", 
+
+            "Action": [ 
+
+                "textract:AnalyzeExpense", 
+
+                "textract:DetectDocumentText", 
+
+                "textract:GetExpenseAnalysis", 
+
+                "textract:AnalyzeDocument", 
+
+                "textract:GetDocumentTextDetection", 
+
+                "textract:GetDocumentAnalysis", 
+
+                "textract:AnalyzeID" 
+
+            ], 
+
+            "Resource": "*" 
+
+        }, 
+
+        { 
+
+            "Sid": "VisualEditor5", 
+
+            "Effect": "Allow", 
+
+            "Action": [ 
+
+                "s3:PutObject", 
+
+                "s3:GetObject" 
+
+            ], 
+
+            "Resource": "arn:aws:s3:::mdhbucket/mi-stage-service-filesharing-store/*" 
+
+        } 
+
+    ] 
+
+} 

@@ -1,0 +1,82 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mareana-admin-v3-5
+  namespace: mi-v3-5
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: mareana-admin-v3-5
+  strategy:
+      type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: mareana-admin-v3-5
+    spec:
+      nodeSelector:
+         Name: mi-v3-5
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - image: registry.cloud.mareana.com/mdh-cpv/dev/spectra-web:3.5
+          name: mareana-admin-v3-5
+          tty: true
+          imagePullPolicy: Always
+          env:
+          - name: "NODE_PATH"
+            value: "src/"
+          - name: "REACT_APP_URL"
+            value: "https://mi-qav3-5.mareana.com"
+          ports:
+          - name: service-port
+            containerPort: 3002
+          resources:
+            requests:
+              memory: 2Gi
+              #  limits:
+                  #   cpu: 200m
+                  #  memory: 1Gi
+---
+apiVersion: v1     #service is enabled which is available in cluster , not outside .  Because to discover by the depeendency pods 
+kind: Service
+metadata:
+  name: mareana-admin-v3-5
+  namespace: mi-v3-5
+spec:
+  ports:
+  - port: 3002
+    targetPort: service-port
+    protocol: TCP
+  selector:
+    app: mareana-admin-v3-5
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2beta1     # kubectl api-versions  (to check the versions of api w
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mareana-admin-v3-5-autoscaler
+  namespace: mi-v3-5
+spec:
+  scaleTargetRef:
+          #apiVersion: extensions/v1beta1
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mareana-admin-v3-5
+  minReplicas: 1
+  maxReplicas: 10
+  #  targetCPUUtilizationPercentage: 80
+  metrics:
+          #  - type: Resource
+          #resource:
+          # name: cpu
+          #      targetAverageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      # targetAverageValue: 200Mi  not work, changed to below
+      targetAverageUtilization: 90
+
