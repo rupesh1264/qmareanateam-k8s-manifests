@@ -1,0 +1,75 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: mi-v3-5
+  name: mi
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:275676758765:certificate/d4252d26-7c17-43ca-901c-544f5665f277
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  rules:
+    - host: mi-preval.mareana.com
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: in-nginx-v3-5
+              port:
+                number: 80
+        - path: /jupyterhub
+          pathType: Prefix
+          backend:
+            service:
+              name: proxy-public
+              port:
+                number: 80
+        - path: /auth
+          pathType: Prefix
+          backend:
+            service:
+              name: in-nginx-v3-5
+              port:
+                number: 80
+        - path: /pbr/
+          pathType: Prefix
+          backend:
+            service:
+              name: in-nginx-v3-5
+              port:
+                number: 80
+        - path: /services/v1
+          pathType: Prefix
+          backend:
+            service:
+              name: in-nginx-v3-5
+              port:
+                number: 80
+        - path: /mdhgenealogy/v1/
+          pathType: Prefix
+          backend:
+            service:
+              name: in-nginx-v3-5
+              port:
+                number: 80
+        - path: /airflow/
+          pathType: Prefix
+          backend:
+            service:
+              name: in-nginx-v3-5
+              port:
+                number: 80
+        - path: /latex_report
+          pathType: Prefix
+          backend:
+            service:
+              name: in-nginx-v3-5
+              port:
+                number: 80

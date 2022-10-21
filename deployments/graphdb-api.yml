@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphdb-api-v3-5
+  namespace: mi-v3-5
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: graphdb-api-v3-5
+  strategy:
+      type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: graphdb-api-v3-5
+    spec:
+      nodeSelector:
+         Name: "mi-v3-5"
+      imagePullSecrets:
+        - name: regcred1
+      containers:
+        - image: IMAGE
+          name: graphdb-api-v3-5
+          imagePullPolicy: Always
+          command: 
+          - gunicorn
+          - --reload 
+          - --bind=0.0.0.0:5000
+          - --workers=2 
+          - --timeout=3600 
+          - rest_api_connexion:create_app()
+          ports:
+          - name: service-port
+            containerPort: 5000
+          env:
+            - name: "LOADTEMPLATE_FOLDER"
+              value: "/app/graphdb_api/src/template" 
+            - name: "NEO4J_API"
+              value: "neo4j://192.168.132.176:7687"
+            - name: "NEO4J_AUTH"
+              value: "neo4j/Mareana@190"
+            - name:  "JDBC_URL"
+              value: "jdbc:postgresql://192.168.129.137:5432/mdh?user=postgres&password=postgrespass"
+          resources:
+            requests:
+              memory: 1Gi
+              #  limits:
+                  #   cpu: 200m
+                  #  memory: 1Gi
+---
+apiVersion: v1     #service is enabled which is available in cluster , not outside .  Because to discover by the depeendency pods 
+kind: Service
+metadata:
+  name: graphdb-api-v3-5
+  namespace: mi-v3-5
+spec:
+  ports:
+  - port: 5000
+    targetPort: service-port
+    protocol: TCP
+  selector:
+    app: graphdb-api-v3-5
+  type: ClusterIP

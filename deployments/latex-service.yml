@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: latex-service-v3-5
+  namespace: mi-v3-5
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: latex-service-v3-5
+  strategy:
+      type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: latex-service-v3-5
+    spec:
+      nodeSelector:
+         Name: mi-v3-5
+      imagePullSecrets:
+        - name: regcred1
+      containers:
+        - image: IMAGE 
+          name: latex-service-v3-5
+          imagePullPolicy: Always
+          ports:
+          - name: port
+            containerPort: 4444
+          resources:
+            requests:
+              memory: 1Gi
+---
+apiVersion: v1     #service is enabled which is available in cluster , not outside .  Because to discover by the depeendency pods 
+kind: Service
+metadata:
+  name: latex-service-v3-5
+  namespace: mi-v3-5
+spec:
+  ports:
+  - port: 4444
+    targetPort: port
+    protocol: TCP
+  selector:
+    app: latex-service-v3-5
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2beta1     # kubectl api-versions  (to check the versions of api w
+kind: HorizontalPodAutoscaler
+metadata:
+  name: latex-service-v3-5-autoscaler
+  namespace: mi-v3-5
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: latex-service-v3-5
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: memory
+      targetAverageUtilization: 90
+

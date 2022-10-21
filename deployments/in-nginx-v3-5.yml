@@ -1,0 +1,110 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: in-nginx-v3-5
+  namespace: mi-v3-5
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: in-nginx-v3-5
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: in-nginx-v3-5
+    spec:
+      hostAliases:
+        - ip: "192.168.139.221"
+          hostnames:
+          - "airflow-webserver"
+      volumes:
+        - name: nginx-v3-5-conf
+          configMap:
+            name: nginx-v3-5-conf # place ConfigMap `nginx3-4-conf` on /etc/nginx
+      containers:
+      - image: nginx:1.19
+        name: nginx
+        ports:
+          - name: nginx-port
+            containerPort: 80
+        volumeMounts:
+          - name: nginx-v3-5-conf
+            mountPath: /etc/nginx/conf.d
+        resources:
+          requests:
+            memory: 0.1Gi
+                     
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: in-nginx-v3-5
+  namespace: mi-v3-5
+spec:
+  ports:
+   - name: nginx-port
+     port: 80
+     targetPort: nginx-port
+     protocol: TCP
+  selector:
+    app: in-nginx-v3-5
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-v3-5-conf
+  namespace: mi-v3-5 
+data:
+  default.conf: |
+       server {
+          listen 80 default_server;
+          client_max_body_size 100M;
+          listen [::]:80 default_server;
+        
+       location / {
+          resolver 8.8.8.8;
+          proxy_pass http://cpv-nextgen-ui-v3-5.mi-v3-5.svc.cluster.local:80;
+            }
+       location /services/v1/ {
+          resolver 8.8.8.8;
+          proxy_pass http://mdhcpvservices-v3-5.mi-v3-5.svc.cluster.local:9090;
+       }
+       location /mdhgenealogy/v1/ {
+          resolver 8.8.8.8;
+          proxy_pass http://genealogy-service-v3-5.mi-v3-5.svc.cluster.local:5000;
+       }
+       location /auth {
+          resolver 8.8.8.8;
+          proxy_pass http://authentication-service-v3-5.mi-v3-5.svc.cluster.local:9090;
+       }
+       location /airflow/ {
+          resolver 8.8.8.8;
+          proxy_pass http://airflow-webserver:8080;
+          proxy_set_header Host $http_host;
+          proxy_redirect off;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+       }
+       location /latex_report {
+          resolver 8.8.8.8;
+          proxy_pass http://latex-service-v3-5.mi-v3-5.svc.cluster.local:4444;
+       }
+       location /pbr/udh/ {
+          resolver 8.8.8.8;
+          proxy_pass http://mdh-pbr-services-v3-5.mi-v3-5.svc.cluster.local:9090;
+          proxy_redirect http://mdh-pbr-services-v3-5.mi-v3-5.svc.cluster.local:9090 $scheme://$host/pbr/udh/;
+          proxy_set_header Host $host;
+          proxy_set_header Referer $http_referer;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+         }
